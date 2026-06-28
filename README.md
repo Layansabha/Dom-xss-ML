@@ -20,16 +20,7 @@ The dataset was used as the starting point for the ML workflow. It was cleaned, 
 
 ## Data Preparation
 
-The preprocessing stage includes:
-
-1. Loading the original DOM XSS dataset.
-2. Cleaning raw DOM samples and removing unusable records.
-3. Normalizing DOM content for consistent processing.
-4. Building a filtered vocabulary of important DOM tokens.
-5. Converting DOM samples into numerical feature vectors.
-6. Splitting the processed dataset into training, validation, and testing sets.
-
-The preprocessing scripts are stored in `preprocessing/`, and helper scripts are stored in `scripts/`.
+The preprocessing stage included cleaning raw DOM samples, removing unusable records, normalizing DOM content, building a filtered vocabulary of important DOM tokens, converting the samples into numerical feature vectors, and splitting the processed dataset into training, validation, and testing sets.
 
 ## Models
 
@@ -42,7 +33,7 @@ The project trains and compares multiple supervised machine learning models:
 - Random Forest
 - MLP
 
-Training scripts are stored in `training/`, while trained model artifacts and vocabulary files are stored in `models/`.
+The trained models were evaluated and compared to identify the strongest approach for DOM XSS classification.
 
 ## Results
 
@@ -53,83 +44,6 @@ Training scripts are stored in `training/`, while trained model artifacts and vo
 ### Shared Features Between Random Forest and MLP
 
 ![RF and MLP Shared Features](docs/results/rf-mlp-intersection-features.svg)
-
-## Repository Structure
-
-```text
-Dom-xss-ML/
-├── README.md
-├── requirements.txt
-├── training/
-│   ├── train_lightgbm.py
-│   ├── train_xgboost.py
-│   ├── train_adaboost.py
-│   ├── train_decision_tree.py
-│   └── train_random_forest.py
-├── preprocessing/
-│   ├── create_vocabulary.py
-│   └── vectorize_data.py
-├── scripts/
-│   ├── save_negative_samples.py
-│   └── shuffle_data.py
-├── models/
-├── data/
-└── docs/
-    └── results/
-```
-
-## Setup
-
-Clone the repository:
-
-```bash
-git clone https://github.com/Layansabha/Dom-xss-ML.git
-cd Dom-xss-ML
-```
-
-Create and activate a virtual environment:
-
-```bash
-python -m venv .venv
-source .venv/bin/activate
-```
-
-Install dependencies:
-
-```bash
-pip install -r requirements.txt
-```
-
-Before running the scripts, update the dataset path inside each script to match the local dataset location.
-
-## Example Usage
-
-Create the vocabulary:
-
-```bash
-python preprocessing/create_vocabulary.py
-```
-
-Vectorize the dataset:
-
-```bash
-python preprocessing/vectorize_data.py
-```
-
-Train a model:
-
-```bash
-python training/train_lightgbm.py
-```
-
-## Outputs
-
-Depending on the selected model, the training scripts generate:
-
-- Trained model files
-- Evaluation reports
-- Feature-importance outputs
-- ROC curve images
 
 ## Scope
 
