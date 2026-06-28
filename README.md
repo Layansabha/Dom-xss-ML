@@ -53,35 +53,6 @@ Training scripts are stored in `training/`. Saved model artifacts and vocabulary
 
 ![RF and MLP Shared Features](docs/results/rf-mlp-intersection-features.svg)
 
-## Repository Structure
-
-```text
-Dom-xss-ML/
-├── README.md
-├── requirements.txt
-├── training/
-│   ├── train_lightgbm.py
-│   ├── train_xgboost.py
-│   ├── train_adaboost.py
-│   ├── train_decision_tree.py
-│   └── train_random_forest.py
-├── preprocessing/
-│   ├── create_vocabulary.py
-│   └── vectorize_data.py
-├── scripts/
-│   ├── save_negative_samples.py
-│   └── shuffle_data.py
-├── models/
-│   ├── lightgbm_best_model_final.pkl
-│   ├── xgboost_best_model_final.pkl
-│   ├── adaboost_best_model_final.pkl
-│   ├── decision_tree_model_final.pkl
-│   ├── random_forest_best_model_final.pkl
-│   └── vocab_top500_filtered.pkl
-├── data/
-└── docs/
-    └── results/
-```
 
 ## Setup
 
