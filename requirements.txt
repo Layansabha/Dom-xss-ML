@@ -1,0 +1,10 @@
+flask
+requests
+beautifulsoup4
+selenium
+pandas
+numpy
+scikit-learn
+xgboost
+lightgbm
+joblib
