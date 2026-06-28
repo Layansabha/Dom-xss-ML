@@ -2,13 +2,13 @@
 
 DOM XSS ML is an academic machine learning project for detecting **DOM-Based Cross-Site Scripting (DOM XSS)** using structural analysis of web page DOM content.
 
-The repository focuses on the machine learning workflow only: dataset cleaning, preprocessing, feature extraction, model training, model comparison, and saved model artifacts. It does not include a production frontend or backend application.
+The project focuses on dataset cleaning, preprocessing, feature extraction, model training, model comparison, and saved model artifacts for DOM XSS classification.
 
 ## Overview
 
-DOM-Based XSS is difficult to detect because the vulnerability happens inside the browser through client-side DOM manipulation. Traditional scanners often depend on payload injection, static signatures, or server-side behavior, which can miss DOM-level vulnerabilities.
+DOM-Based XSS is difficult to detect because the vulnerability happens inside the browser through user-controlled changes to the Document Object Model. Traditional scanners often depend on payload injection, static signatures, or server-side behavior, which can miss vulnerabilities that appear only through client-side DOM manipulation.
 
-This project uses a machine learning approach. DOM samples are cleaned, transformed into structural features, and passed into classification models to predict whether a page is vulnerable or non-vulnerable.
+Instead of relying on payloads or brute-force testing, this project uses a machine learning approach. DOM samples are cleaned, transformed into structural features, and passed into classification models to predict whether a page is vulnerable or non-vulnerable.
 
 ## Dataset
 
@@ -21,6 +21,17 @@ The dataset was used as the starting point for the ML workflow. It was cleaned, 
 ## Data Preparation
 
 The preprocessing stage included cleaning raw DOM samples, removing unusable records, normalizing DOM content, building a filtered vocabulary of important DOM tokens, converting the samples into numerical feature vectors, and splitting the processed dataset into training, validation, and testing sets.
+
+## Detection Workflow
+
+The project is designed as a full detection workflow, not only a trained model:
+
+1. DOM samples are prepared from the dataset.
+2. DOM content is cleaned and normalized.
+3. Structural DOM features are extracted and vectorized.
+4. The processed features are passed into trained machine learning models.
+5. The models classify the samples as vulnerable or non-vulnerable.
+6. Model results are compared to evaluate detection performance.
 
 ## Models
 
