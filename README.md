@@ -150,7 +150,4 @@ This project is intended for academic research, cybersecurity learning, and auth
 TRIO Graduation Project
 
 - Layan Hasan Sabha
-- Ghazal Hamdi Alzoubi
-- Mohammad Mofeed Hattoub
 
-Supervised by Dr. Mamoon Yusef Obiedat and Dr. Majdi Ahmad Maabreh.
