@@ -145,9 +145,3 @@ This repository focuses on DOM-Based XSS classification using structural DOM fea
 
 This project is intended for academic research, cybersecurity learning, and authorized testing only.
 
-## Authors
-
-TRIO Graduation Project
-
-- Layan Hasan Sabha
-
