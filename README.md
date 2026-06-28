@@ -53,31 +53,6 @@ Training scripts are stored in `training/`. Saved model artifacts and vocabulary
 
 ![RF and MLP Shared Features](docs/results/rf-mlp-intersection-features.svg)
 
-
-## Example Usage
-
-Create vocabulary:
-
-```bash
-python preprocessing/create_vocabulary.py
-```
-
-Vectorize DOM samples:
-
-```bash
-python preprocessing/vectorize_data.py
-```
-
-Train a model:
-
-```bash
-python training/train_lightgbm.py
-```
-
-## Outputs
-
-The training scripts generate model files, evaluation reports, feature-importance outputs, and ROC curve images depending on the selected model.
-
 ## Scope
 
 This repository focuses on DOM-Based XSS classification using structural DOM features and machine learning. It does not cover SQL Injection, CSRF, reflected XSS, stored XSS, network security, or mobile security.
