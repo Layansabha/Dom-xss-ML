@@ -1,0 +1,145 @@
+/* General reset styles */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+/* Custom font face */
+@font-face {
+    font-family: 'CubeCavern';
+    src: url('cubecavern_memesbruh03.ttf') format('truetype');
+}
+
+/* Body styling */
+body {
+    font-family: 'CubeCavern', sans-serif;
+    background-color: rgba(240, 240, 240, 1);
+    height: 100vh;
+    width: 100vw;
+    position: relative;
+    overflow: hidden;
+}
+
+/* Container for icons */
+.icons {
+    position: absolute;
+    top: 20px;
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    padding: 0 40px;
+    z-index: 2;
+}
+
+.list-icon,
+.profile-icon {
+    width: 40px;
+    height: 40px;
+}
+
+/* TRIO logo styling */
+.logo {
+    position: absolute;
+    top: 44%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 0;
+}
+
+.logo h1 {
+    font-size: 450px; /* Size of the logo text */
+    font-weight: bold;
+    color: rgba(197, 197, 197, 1);
+    white-space: nowrap;
+    letter-spacing: -30px; /* Space between each letter */
+    position: relative;
+    overflow: hidden; /* Hide content that exceeds the element's boundaries */
+}
+
+/* Add animation effect on hover */
+.logo h1:before, .logo h1:after {
+    content: attr(data-text);
+    position: absolute;
+    top: 0;
+    left: 0;
+    color: #262626;
+    width: 0%;
+    overflow: hidden;
+    transition: width 1s;
+}
+
+.logo h1:before {
+    left: -100%; /* Place the effect from the left side */
+}
+
+.logo h1:after {
+    right: -100%; /* Place the effect from the right side */
+}
+
+.logo h1:hover:before {
+    width: 100%; /* Expand the width from the left side */
+}
+
+.logo h1:hover:after {
+    width: 100%; /* Expand the width from the right side */
+}
+
+/* Robot image styling */
+.robot {
+    position: absolute;
+    top: 0%; /* Move the robot upwards */
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 1;
+    filter: drop-shadow(9px 12px 2px rgba(0, 0, 0, 0.3)); /* Add shadow to robot image */
+}
+
+.robot img {
+    width: 610px; /* Size of the robot image */
+}
+
+/* Text content styling */
+.text {
+    position: absolute;
+    bottom: 40px; /* Position the text to align with icons */
+    left: 110px;
+    text-align: left;
+    z-index: 2;
+}
+
+.text p {
+    font-size: 18px;
+    color: rgba(177, 0, 0, 1);
+    margin: 5px 0;
+    line-height: 1; /* Reduce line spacing */
+}
+
+.text p:nth-child(2){
+    margin-left: 23px;
+}
+
+/* Scan Now button styling */
+.scan-btn {
+    background-color: rgba(177, 0, 0, 1);
+    color: white;
+    border: none;
+    padding: 15px 45px;
+    font-size: 16px;
+    border-radius: 10px;
+    cursor: pointer;
+    position: absolute;
+    bottom: 40px; /* Position the button to align with icons */
+    right: 110px;
+    z-index: 2;
+    font-family: 'CubeCavern', sans-serif; /* Same font as the body */
+    transition: all 0.3s ease-in-out;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    letter-spacing: 2px; /* Add space between the letters in the button text */
+}
+
+.scan-btn:hover {
+    background-color: #990000;
+    transform: scale(1.1); /* Animation when hovering */
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
+}
