@@ -54,30 +54,6 @@ Training scripts are stored in `training/`. Saved model artifacts and vocabulary
 ![RF and MLP Shared Features](docs/results/rf-mlp-intersection-features.svg)
 
 
-## Setup
-
-Clone the repository:
-
-```bash
-git clone https://github.com/Layansabha/Dom-xss-ML.git
-cd Dom-xss-ML
-```
-
-Create and activate a virtual environment:
-
-```bash
-python -m venv .venv
-source .venv/bin/activate
-```
-
-Install dependencies:
-
-```bash
-pip install -r requirements.txt
-```
-
-Before running the scripts, make sure the dataset path inside each script points to the correct local dataset file.
-
 ## Example Usage
 
 Create vocabulary:
