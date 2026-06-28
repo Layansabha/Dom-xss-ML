@@ -1,46 +1,35 @@
 # DOM XSS ML
 
-DOM XSS ML is an academic cybersecurity project for detecting DOM-Based Cross-Site Scripting (DOM XSS) using structural analysis and machine learning.
+DOM XSS ML is an academic machine learning project for detecting DOM-Based Cross-Site Scripting (DOM XSS) through structural analysis of web page DOM content.
 
-Instead of depending only on payload injection or brute-force scanning, the project analyzes the structure of web pages, extracts DOM-based features, and uses trained machine learning models to classify whether a page may be vulnerable to DOM XSS.
+The repository focuses on the data preparation, feature extraction, model training, and trained model artifacts used for DOM XSS classification. It does not include a production frontend or backend application.
 
-## Problem Statement
+## Project Idea
 
-DOM-Based XSS is difficult to detect because the vulnerability happens inside the browser through client-side DOM manipulation. Traditional scanners often focus on server-side behavior, static rules, or payload-based testing, which can miss vulnerabilities that only appear through JavaScript-driven page behavior.
+DOM-Based XSS is difficult to detect because the vulnerability happens inside the browser through client-side DOM manipulation. Many traditional scanners depend on payload injection, static signatures, or server-side behavior, which can miss DOM-level vulnerabilities.
 
-This project addresses that gap by building a lightweight AI-assisted pipeline that focuses on DOM structure and client-side patterns.
+This project takes a machine learning approach: DOM samples are collected, cleaned, converted into structural features, and used to train classification models that predict whether a page is vulnerable or non-vulnerable.
 
 ## Dataset
 
-The dataset was prepared as part of the project workflow. It was built from collected and labeled DOM samples representing vulnerable and non-vulnerable web pages.
+The dataset was prepared as part of the project workflow. It contains DOM samples labeled as vulnerable or non-vulnerable.
 
-The vulnerable samples were based on confirmed DOM XSS cases and deliberately vulnerable web applications used for security testing, including Mutillidae. The collected pages were parsed, cleaned, and transformed into a vectorized dataset using DOM feature extraction and vocabulary-based preprocessing.
+The vulnerable samples were based on confirmed DOM XSS cases and deliberately vulnerable web applications used for security testing, including Mutillidae. The non-vulnerable samples were collected from clean or non-vulnerable DOM pages to help the models learn the difference between normal and risky DOM structures.
 
 Dataset preparation flow:
 
-1. Collect accessible web pages and DOM samples.
-2. Label samples as vulnerable or non-vulnerable.
-3. Parse and clean DOM content.
+1. Collect DOM samples from web pages.
+2. Label each sample as vulnerable or non-vulnerable.
+3. Clean and normalize DOM content.
 4. Build a filtered vocabulary of important DOM tokens.
-5. Vectorize the dataset for machine learning training.
-6. Split the data for training, validation, and testing.
+5. Convert DOM samples into numerical feature vectors.
+6. Split the dataset for training, validation, and testing.
 
-Relevant preprocessing scripts are located in `src/pipeline/` and `scripts/`.
-
-## Pipeline
-
-The detection pipeline follows these stages:
-
-1. User provides a target domain or URL.
-2. The system crawls and filters accessible pages.
-3. The DOM structure of each page is extracted and cleaned.
-4. DOM features are converted into a machine-readable format.
-5. A trained model predicts DOM XSS risk.
-6. Results are generated with recommendations for mitigation.
+The preprocessing code is located in `preprocessing/` and helper scripts are located in `scripts/`.
 
 ## Machine Learning Models
 
-The project compares multiple supervised learning models for DOM XSS classification:
+The project trains and compares multiple supervised learning models:
 
 - LightGBM
 - XGBoost
@@ -49,21 +38,7 @@ The project compares multiple supervised learning models for DOM XSS classificat
 - Random Forest
 - MLP
 
-Trained model artifacts are stored in `models/`, while model training scripts are stored in `src/models/`.
-
-## Tech Stack
-
-- Python
-- Flask
-- React.js
-- Selenium
-- Beautiful Soup
-- Requests
-- Pandas
-- Scikit-learn
-- XGBoost
-- LightGBM
-- Joblib
+Training scripts are stored in `training/`. Saved model artifacts and vocabulary files are stored in `models/`.
 
 ## Repository Structure
 
@@ -71,19 +46,27 @@ Trained model artifacts are stored in `models/`, while model training scripts ar
 Dom-xss-ML/
 ├── README.md
 ├── requirements.txt
-├── docs/
-├── src/
-│   ├── backend/
-│   ├── frontend/
-│   ├── models/
-│   └── pipeline/
-├── data/
-├── models/
-├── reports/
+├── training/
+│   ├── train_lightgbm.py
+│   ├── train_xgboost.py
+│   ├── train_adaboost.py
+│   ├── train_decision_tree.py
+│   └── train_random_forest.py
+├── preprocessing/
+│   ├── create_vocabulary.py
+│   └── vectorize_data.py
 ├── scripts/
-├── tests/
-├── assets/
-└── config/
+│   ├── save_negative_samples.py
+│   └── shuffle_data.py
+├── models/
+│   ├── lightgbm_best_model_final.pkl
+│   ├── xgboost_best_model_final.pkl
+│   ├── adaboost_best_model_final.pkl
+│   ├── decision_tree_model_final.pkl
+│   ├── random_forest_best_model_final.pkl
+│   └── vocab_top500_filtered.pkl
+├── data/
+└── docs/
 ```
 
 ## Setup
@@ -108,36 +91,45 @@ Install dependencies:
 pip install -r requirements.txt
 ```
 
-Before running the training scripts, update the dataset paths in the scripts or move the dataset files into the expected project folders.
+Before running the scripts, make sure the dataset path inside each script points to the correct local dataset file.
 
 ## Example Usage
+
+Create vocabulary:
+
+```bash
+python preprocessing/create_vocabulary.py
+```
+
+Vectorize DOM samples:
+
+```bash
+python preprocessing/vectorize_data.py
+```
 
 Train a model:
 
 ```bash
-python src/models/train_lightgbm.py
+python training/train_lightgbm.py
 ```
 
-Run preprocessing scripts:
+## Outputs
 
-```bash
-python src/pipeline/create_vocabulary.py
-python src/pipeline/vectorize_data.py
-```
+The training scripts generate model files, evaluation reports, feature-importance outputs, and ROC curve images depending on the selected model.
 
-## Project Scope
+## Scope
 
-This project focuses only on DOM-Based XSS detection. It does not cover other vulnerability classes such as SQL Injection, CSRF, server-side XSS, network security issues, or mobile application security.
+This repository focuses on DOM-Based XSS classification using structural DOM features and machine learning. It does not cover SQL Injection, CSRF, reflected XSS, stored XSS, network security, or mobile security.
 
 ## Limitations
 
-- The system depends on the quality and coverage of the collected dataset.
-- Runtime-only vulnerabilities may be missed if they require specific user interaction or complex JavaScript execution.
-- The current implementation is an academic prototype and may require additional hardening before production use.
+- Model quality depends on the size and quality of the labeled dataset.
+- Runtime-only DOM XSS cases may require additional browser execution or user interaction to detect.
+- The current work is an academic prototype and requires further validation before production use.
 
 ## Ethical Use
 
-This repository is intended for academic research, cybersecurity learning, and authorized security testing only. Do not use it to scan or test systems without permission.
+This project is intended for academic research, cybersecurity learning, and authorized testing only.
 
 ## Authors
 
@@ -148,7 +140,3 @@ TRIO Graduation Project
 - Mohammad Mofeed Hattoub
 
 Supervised by Dr. Mamoon Yusef Obiedat and Dr. Majdi Ahmad Maabreh.
-
-## Status
-
-Academic graduation project prototype for DOM-Based XSS detection using structural AI analysis.

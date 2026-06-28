@@ -4,38 +4,30 @@
 Dom-xss-ML/
 ├── README.md
 ├── requirements.txt
-├── docs/
-│   ├── project-summary.md
-│   ├── setup.md
-│   └── structure.md
-├── src/
-│   ├── backend/
-│   ├── frontend/
-│   │   ├── public/
-│   │   └── styles/
-│   ├── models/
-│   └── pipeline/
-├── data/
-├── models/
-├── reports/
-├── notebooks/
-├── assets/
-├── tests/
+├── training/
+│   ├── train_lightgbm.py
+│   ├── train_xgboost.py
+│   ├── train_adaboost.py
+│   ├── train_decision_tree.py
+│   └── train_random_forest.py
+├── preprocessing/
+│   ├── create_vocabulary.py
+│   └── vectorize_data.py
 ├── scripts/
-└── config/
+│   ├── save_negative_samples.py
+│   └── shuffle_data.py
+├── models/
+│   ├── trained model artifacts
+│   └── vocabulary files
+├── data/
+└── docs/
 ```
 
 ## Folder Purpose
 
-- `src/backend/`: Flask API and backend services.
-- `src/frontend/`: React/frontend files, styles, public assets, and build configuration.
-- `src/pipeline/`: DOM extraction, vocabulary creation, feature extraction, and vectorization logic.
-- `src/models/`: model training scripts for LightGBM, XGBoost, AdaBoost, Decision Tree, and Random Forest.
+- `training/`: model training scripts.
+- `preprocessing/`: vocabulary creation and vectorization scripts.
 - `models/`: trained model artifacts and vocabulary files.
-- `data/`: datasets and split files.
-- `scripts/`: helper scripts for preprocessing and automation.
-- `reports/`: generated reports, evaluation outputs, and screenshots.
+- `data/`: dataset files and split outputs.
+- `scripts/`: helper scripts for dataset preparation.
 - `docs/`: project documentation.
-- `assets/`: images, diagrams, and visual project assets.
-- `tests/`: unit and integration tests.
-- `config/`: configuration files and environment templates.

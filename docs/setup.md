@@ -1,20 +1,31 @@
 # Setup
 
-Basic setup depends on the final source code location.
-
-Suggested local workflow:
+Clone the repository:
 
 ```bash
 git clone https://github.com/Layansabha/Dom-xss-ML.git
 cd Dom-xss-ML
+```
+
+Create and activate a virtual environment:
+
+```bash
 python -m venv .venv
 source .venv/bin/activate
+```
+
+Install dependencies:
+
+```bash
 pip install -r requirements.txt
 ```
 
-If the project has a React frontend, install dependencies from the frontend folder:
+Update dataset paths inside the scripts before running training or preprocessing.
+
+Example:
 
 ```bash
-npm install
-npm run dev
+python preprocessing/create_vocabulary.py
+python preprocessing/vectorize_data.py
+python training/train_lightgbm.py
 ```
