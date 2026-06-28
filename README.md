@@ -40,6 +40,16 @@ The project trains and compares multiple supervised learning models:
 
 Training scripts are stored in `training/`. Saved model artifacts and vocabulary files are stored in `models/`.
 
+## Results
+
+### Model Comparison
+
+![Model Comparison](docs/results/model-comparison.svg)
+
+### Shared Features Between Random Forest and MLP
+
+![RF and MLP Shared Features](docs/results/rf-mlp-intersection-features.svg)
+
 ## Repository Structure
 
 ```text
@@ -67,6 +77,7 @@ Dom-xss-ML/
 │   └── vocab_top500_filtered.pkl
 ├── data/
 └── docs/
+    └── results/
 ```
 
 ## Setup
