@@ -1,8 +1,10 @@
 # DOM XSS ML
 
-DOM XSS ML is an academic machine learning project for detecting **DOM-Based Cross-Site Scripting (DOM XSS)** using structural analysis of web page DOM content.
+DOM XSS ML is an academic machine-learning project for ranking JavaScript
+functions that may contain **DOM-based Cross-Site Scripting (DOM XSS)**.
 
-The project focuses on dataset cleaning, preprocessing, feature extraction, model training, model comparison, and saved model artifacts for DOM XSS classification.
+The repository contains the original experiments and a reproducible,
+leakage-resistant LightGBM training path for the production DOM-XSS pipeline.
 
 ## Overview
 
@@ -16,11 +18,21 @@ The original dataset used in this project is the **DOM XSS Web Vulnerability Dat
 
 [DOM XSS Web Vulnerability Dataset](https://kilthub.cmu.edu/articles/dataset/DOM_XSS_Web_Vulnerability_Dataset/13870256)
 
-The dataset was used as the starting point for the ML workflow. It was cleaned, filtered, vectorized, and split into training, validation, and testing sets before model training.
+The preferred input is the dataset's raw JSONL/LZMA (`.xz`) files. The grouped
+trainer also accepts the earlier XLSX samples for migration, but rejects cells
+at Excel's 32,767-character limit because those feature dictionaries are
+truncated.
 
 ## Data Preparation
 
-The preprocessing stage included cleaning raw DOM samples, removing unusable records, normalizing DOM content, building a filtered vocabulary of important DOM tokens, converting the samples into numerical feature vectors, and splitting the processed dataset into training, validation, and testing sets.
+The production model is trained by
+`training/train_lightgbm_grouped.py`. It assigns complete scripts to one split,
+fits the vocabulary on training data only, rejects corrupt or zero-coverage
+rows, removes conflicting and duplicate feature bags, tunes on unseen
+validation patterns, and reports a once-only strict test.
+
+See [MODEL_CARD.md](MODEL_CARD.md) for provenance, exact evaluation, intended
+use, limitations, and reproduction commands.
 
 ## Detection Workflow
 
@@ -30,7 +42,7 @@ The project is designed as a full detection workflow, not only a trained model:
 2. DOM content is cleaned and normalized.
 3. Structural DOM features are extracted and vectorized.
 4. The processed features are passed into trained machine learning models.
-5. The models classify the samples as vulnerable or non-vulnerable.
+5. The model produces a risk-ranking score for each function.
 6. Model results are compared to evaluate detection performance.
 
 ## Models
@@ -44,7 +56,9 @@ The project trains and compares multiple supervised machine learning models:
 - Random Forest
 - MLP
 
-The trained models were evaluated and compared to identify the strongest approach for DOM XSS classification.
+The older model files are preserved for comparison. The production artifacts
+are `models/lightgbm_grouped_model.txt` and
+`preprocessing/vocab_top500_grouped.json`.
 
 ## Results
 
@@ -60,11 +74,26 @@ The trained models were evaluated and compared to identify the strongest approac
 
 This repository focuses on DOM-Based XSS classification using structural DOM features and machine learning. It does not cover SQL Injection, CSRF, reflected XSS, stored XSS, network security, or mobile security.
 
+## Strict grouped LightGBM result
+
+On the strict held-out set of unique, previously unseen feature bags:
+
+| Threshold | Precision | Recall | F1 | PR-AUC |
+|---|---:|---:|---:|---:|
+| Validation-selected | 0.9545 | 0.7636 | 0.8485 | 0.9066 |
+| 0.50 pre-filter | 0.8431 | 0.7818 | 0.8113 | 0.9066 |
+
+These are function-level measurements on the cleaned sampled derivative
+dataset, not a claim of page-level production accuracy.
+
 ## Limitations
 
 - Model quality depends on the size and quality of the labeled dataset.
 - Runtime-only DOM XSS cases may require additional browser execution or user interaction to detect.
-- The current work is an academic prototype and requires further validation before production use.
+- The score is a ranking signal, not a calibrated probability or proof of
+  exploitability.
+- The Tree-sitter production extractor is not identical to the modified
+  Chromium/V8 instrumentation used to produce the research data.
 
 ## Ethical Use
 

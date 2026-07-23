@@ -1,0 +1,38 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  training-pipeline:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install training dependencies
+        run: python -m pip install -r requirements-training.txt pytest
+
+      - name: Test
+        run: pytest -q
+
+      - name: Validate native artifact
+        run: |
+          python - <<'PY'
+          import json
+          from lightgbm import Booster
+
+          model = Booster(model_file="models/lightgbm_grouped_model.txt")
+          vocabulary = json.load(open("preprocessing/vocab_top500_grouped.json"))
+          assert model.num_feature() == len(vocabulary) == 500
+          print("validated", model.num_feature(), "features")
+          PY
