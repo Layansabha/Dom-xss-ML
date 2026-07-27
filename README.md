@@ -34,6 +34,25 @@ validation patterns, and reports a once-only strict test.
 See [MODEL_CARD.md](MODEL_CARD.md) for provenance, exact evaluation, intended
 use, limitations, and reproduction commands.
 
+### Adding raw CMU shards safely
+
+Do not concatenate multi-gigabyte CMU shards into the sampled XLSX file. The
+streaming sampler retains every positive feature bag, takes a deterministic
+reservoir of negatives from each input, and excludes scripts and exact feature
+bags already present in the baseline:
+
+```bash
+python -m preprocessing.sample_cmu_shards \
+  data/raw/cmu/vulnerability-data/confirmed/*.data.xz \
+  --exclude data/raw/full_dataset.xlsx \
+  --negative-rows-per-input 50000 \
+  --output data/processed/cmu-confirmed-additions.jsonl.gz
+```
+
+The sampler writes a JSON audit beside its output. The resulting JSONL can be
+passed to `training/train_lightgbm_grouped.py` together with the baseline XLSX.
+Raw data and local `runs/` outputs are ignored by Git.
+
 ## Detection Workflow
 
 The project is designed as a full detection workflow, not only a trained model:
