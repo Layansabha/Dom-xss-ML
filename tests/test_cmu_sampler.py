@@ -61,9 +61,13 @@ def test_sampler_keeps_positives_samples_negatives_and_excludes_baseline(
         rows = [json.loads(line) for line in handle]
 
     assert summary.input_rows == 8
-    assert summary.positive_rows == 3
+    assert summary.raw_positive_rows == 3
+    assert summary.raw_negative_rows == 5
+    assert summary.unique_positive_rows == 2
     assert summary.duplicate_positive_features == 1
-    assert summary.excluded_baseline_scripts == 1
+    assert summary.excluded_negative_baseline_scripts == 1
+    assert summary.excluded_positive_baseline_scripts == 0
+    assert summary.excluded_positive_baseline_features == 0
     assert summary.sampled_negative_rows == 2
     assert summary.written_rows == 4
     assert sum(row["lbl"] == "p" for row in rows) == 2

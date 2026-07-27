@@ -22,12 +22,16 @@ from training.train_lightgbm_grouped import (
 @dataclass(frozen=True)
 class SampleSummary:
     input_rows: int
-    positive_rows: int
+    raw_positive_rows: int
+    raw_negative_rows: int
+    unique_positive_rows: int
     negative_candidates: int
     sampled_negative_rows: int
     written_rows: int
-    excluded_baseline_scripts: int
-    excluded_baseline_features: int
+    excluded_positive_baseline_scripts: int
+    excluded_positive_baseline_features: int
+    excluded_negative_baseline_scripts: int
+    excluded_negative_baseline_features: int
     duplicate_positive_features: int
     duplicate_or_conflicting_negatives: int
     rejected_rows: dict[str, int]
@@ -90,10 +94,13 @@ def sample_shards(
     negative_reservoirs: list[list[tuple[str, str]]] = []
     rejected: Counter[str] = Counter()
     input_rows = 0
-    positive_rows = 0
+    raw_positive_rows = 0
+    raw_negative_rows = 0
     negative_candidates = 0
-    excluded_baseline_scripts = 0
-    excluded_baseline_features = 0
+    excluded_positive_baseline_scripts = 0
+    excluded_positive_baseline_features = 0
+    excluded_negative_baseline_scripts = 0
+    excluded_negative_baseline_features = 0
     duplicate_positive_features = 0
 
     for input_index, input_path in enumerate(inputs):
@@ -107,16 +114,25 @@ def sample_shards(
             if isinstance(record, RejectedRecord):
                 rejected[record.reason] += 1
                 continue
+            if record.label:
+                raw_positive_rows += 1
+            else:
+                raw_negative_rows += 1
             if record.script_id in excluded_scripts:
-                excluded_baseline_scripts += 1
+                if record.label:
+                    excluded_positive_baseline_scripts += 1
+                else:
+                    excluded_negative_baseline_scripts += 1
                 continue
             if record.feature_hash in excluded_hashes:
-                excluded_baseline_features += 1
+                if record.label:
+                    excluded_positive_baseline_features += 1
+                else:
+                    excluded_negative_baseline_features += 1
                 continue
 
             serialized = _compact_json(record)
             if record.label:
-                positive_rows += 1
                 if record.feature_hash in positive_records:
                     duplicate_positive_features += 1
                 else:
@@ -136,7 +152,8 @@ def sample_shards(
             if input_rows % 250_000 == 0:
                 print(
                     f"processed {input_rows:,} rows; "
-                    f"kept {len(positive_records):,} unique positives"
+                    f"found {raw_positive_rows:,} raw positives; "
+                    f"kept {len(positive_records):,} new unique positives"
                 )
 
         negative_reservoirs.append(reservoir)
@@ -161,12 +178,16 @@ def sample_shards(
 
     summary = SampleSummary(
         input_rows=input_rows,
-        positive_rows=positive_rows,
+        raw_positive_rows=raw_positive_rows,
+        raw_negative_rows=raw_negative_rows,
+        unique_positive_rows=len(positive_records),
         negative_candidates=negative_candidates,
         sampled_negative_rows=sampled_negative_rows,
         written_rows=len(positive_records) + sampled_negative_rows,
-        excluded_baseline_scripts=excluded_baseline_scripts,
-        excluded_baseline_features=excluded_baseline_features,
+        excluded_positive_baseline_scripts=excluded_positive_baseline_scripts,
+        excluded_positive_baseline_features=excluded_positive_baseline_features,
+        excluded_negative_baseline_scripts=excluded_negative_baseline_scripts,
+        excluded_negative_baseline_features=excluded_negative_baseline_features,
         duplicate_positive_features=duplicate_positive_features,
         duplicate_or_conflicting_negatives=duplicate_or_conflicting_negatives,
         rejected_rows=dict(rejected),
