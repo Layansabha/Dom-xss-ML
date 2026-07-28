@@ -32,8 +32,11 @@ jobs:
           import json
           from lightgbm import Booster
 
-          model = Booster(model_file="models/lightgbm_grouped_model.txt")
-          vocabulary = json.load(open("preprocessing/vocab_top500_grouped.json"))
-          assert model.num_feature() == len(vocabulary) == 500
+          model = Booster(model_file="models/lightgbm_security_v2.txt")
+          vocabulary = json.load(open("preprocessing/vocab_security_v2.json"))
+          metadata = json.load(open("models/lightgbm_security_v2_metadata.json"))
+          assert model.num_feature() == len(vocabulary) == 4096
+          assert metadata["artifact_version"] == 3
+          assert metadata["feature_contract"] == "cmu-ast-bow-security-interactions-v2"
           print("validated", model.num_feature(), "features")
           PY

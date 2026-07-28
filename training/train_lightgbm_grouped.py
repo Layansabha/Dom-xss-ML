@@ -26,6 +26,11 @@ from sklearn.metrics import (
     roc_auc_score,
 )
 
+from preprocessing.security_features import (
+    FEATURE_CONTRACT,
+    augment_security_features,
+)
+
 
 RANDOM_STATE = 42
 SPLIT_NAMES = ("train", "validation", "test")
@@ -67,6 +72,21 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--output-root", type=Path, default=Path("."))
     parser.add_argument("--vocab-size", type=int, default=500)
     parser.add_argument("--min-token-count", type=int, default=5)
+    parser.add_argument(
+        "--target-recall",
+        type=float,
+        default=0.95,
+        help="Validation recall target used to select the deployment threshold.",
+    )
+    parser.add_argument(
+        "--max-train-duplicates",
+        type=int,
+        default=20,
+        help=(
+            "Maximum rows retained per identical feature bag in training. "
+            "Validation and test remain unique and unseen."
+        ),
+    )
     parser.add_argument("--max-rows", type=int)
     parser.add_argument(
         "--dataset-url",
@@ -118,7 +138,7 @@ def normalize_feature_mapping(value: object) -> dict[str, float] | None:
             return None
         if count:
             normalized[token] = normalized.get(token, 0.0) + count
-    return normalized
+    return augment_security_features(normalized)
 
 
 def canonical_feature_hash(features: Mapping[str, float]) -> str:
@@ -249,6 +269,22 @@ def unique_indexes(indexes: np.ndarray, feature_hashes: np.ndarray) -> np.ndarra
     return np.asarray(selected, dtype=np.int64)
 
 
+def capped_duplicate_indexes(
+    indexes: np.ndarray,
+    feature_hashes: np.ndarray,
+    maximum_per_hash: int,
+) -> np.ndarray:
+    retained: Counter[str] = Counter()
+    selected: list[int] = []
+    for index in indexes:
+        feature_hash = str(feature_hashes[index])
+        if retained[feature_hash] >= maximum_per_hash:
+            continue
+        retained[feature_hash] += 1
+        selected.append(int(index))
+    return np.asarray(selected, dtype=np.int64)
+
+
 def unseen_unique_indexes(
     indexes: np.ndarray,
     feature_hashes: np.ndarray,
@@ -282,6 +318,35 @@ def classification_metrics(
     }
 
 
+def hybrid_classification_metrics(
+    labels: np.ndarray,
+    scores: np.ndarray,
+    threshold: float,
+    security_signals: np.ndarray,
+) -> dict[str, object]:
+    model_positive = scores >= threshold
+    combined_positive = model_positive | security_signals
+    tn, fp, fn, tp = confusion_matrix(
+        labels,
+        combined_positive,
+        labels=[0, 1],
+    ).ravel()
+    return {
+        "rows": int(labels.size),
+        "positive_rows": int(labels.sum()),
+        "threshold": float(threshold),
+        "precision": float(
+            precision_score(labels, combined_positive, zero_division=0)
+        ),
+        "recall": float(recall_score(labels, combined_positive, zero_division=0)),
+        "f1": float(f1_score(labels, combined_positive, zero_division=0)),
+        "confusion": {"tn": int(tn), "fp": int(fp), "fn": int(fn), "tp": int(tp)},
+        "model_positive_rows": int(model_positive.sum()),
+        "security_signal_rows": int(security_signals.sum()),
+        "combined_positive_rows": int(combined_positive.sum()),
+    }
+
+
 def best_f1_threshold(labels: np.ndarray, scores: np.ndarray) -> float:
     best_score = -1.0
     best_threshold = 0.5
@@ -291,6 +356,22 @@ def best_f1_threshold(labels: np.ndarray, scores: np.ndarray) -> float:
             best_score = float(score)
             best_threshold = float(threshold)
     return best_threshold
+
+
+def target_recall_threshold(
+    labels: np.ndarray,
+    scores: np.ndarray,
+    target_recall: float,
+) -> float:
+    """Return the highest observed threshold that still meets target recall."""
+
+    candidates = np.unique(scores)
+    eligible = [
+        float(threshold)
+        for threshold in candidates
+        if recall_score(labels, scores >= threshold, zero_division=0) >= target_recall
+    ]
+    return max(eligible) if eligible else float(candidates.min())
 
 
 def build_dataset(
@@ -344,6 +425,7 @@ def build_dataset(
     scripts: list[str] = []
     feature_hashes: list[str] = []
     matched_tokens: list[int] = []
+    security_signals: list[bool] = []
     parsed_rows = 0
 
     for path, row in iter_source_rows(inputs):
@@ -365,6 +447,9 @@ def build_dataset(
         scripts.append(record.script_id)
         feature_hashes.append(record.feature_hash)
         matched_tokens.append(matched)
+        security_signals.append(
+            any(token.startswith("sec_pair_") for token in record.features)
+        )
         parsed_rows += 1
         if max_rows is not None and parsed_rows >= max_rows:
             break
@@ -385,6 +470,7 @@ def build_dataset(
         "scripts": np.asarray(scripts),
         "feature_hashes": np.asarray(feature_hashes),
         "matched_tokens": np.asarray(matched_tokens, dtype=np.int32),
+        "security_signals": np.asarray(security_signals, dtype=bool),
     }
     audit = {
         "parsed_rows": parsed_rows,
@@ -394,7 +480,7 @@ def build_dataset(
         "zero_vocabulary_coverage_rows": int((arrays["matched_tokens"] == 0).sum()),
         "unique_scripts": int(np.unique(arrays["scripts"]).size),
         "input_files": [
-            {"path": str(path), "size": path.stat().st_size, "sha256": sha256_file(path)}
+            {"path": path.name, "size": path.stat().st_size, "sha256": sha256_file(path)}
             for path in inputs
         ],
     }
@@ -404,6 +490,8 @@ def build_dataset(
 def fit_and_select(
     matrix: sparse.csr_matrix,
     arrays: dict[str, np.ndarray],
+    target_recall: float,
+    max_train_duplicates: int,
 ) -> tuple[LGBMClassifier, dict[str, object], dict[str, object]]:
     labels = arrays["labels"]
     groups = arrays["groups"]
@@ -425,11 +513,17 @@ def fit_and_select(
     train_all = np.flatnonzero(eligible & (groups == 0))
     validation_all = np.flatnonzero(eligible & (groups == 1))
     test_all = np.flatnonzero(eligible & (groups == 2))
-    train = unique_indexes(train_all, hashes)
-    validation = unseen_unique_indexes(validation_all, hashes, train)
-    train_validation = unique_indexes(
-        np.concatenate([train_all, validation_all]),
+    train = capped_duplicate_indexes(
+        train_all,
         hashes,
+        max_train_duplicates,
+    )
+    validation = unseen_unique_indexes(validation_all, hashes, train)
+    train_validation_all = np.concatenate([train_all, validation_all])
+    train_validation = capped_duplicate_indexes(
+        train_validation_all,
+        hashes,
+        max_train_duplicates,
     )
     test = unseen_unique_indexes(test_all, hashes, train_validation)
 
@@ -462,12 +556,20 @@ def fit_and_select(
             callbacks=[early_stopping(100, verbose=False), log_evaluation(0)],
         )
         validation_scores = model.predict_proba(matrix[validation])[:, 1]
-        threshold = best_f1_threshold(labels[validation], validation_scores)
+        f1_threshold = best_f1_threshold(labels[validation], validation_scores)
+        recall_threshold = target_recall_threshold(
+            labels[validation],
+            validation_scores,
+            target_recall,
+        )
         result = {
             "parameters": candidate,
             "best_iteration": int(model.best_iteration_),
             "validation": classification_metrics(
-                labels[validation], validation_scores, threshold
+                labels[validation], validation_scores, recall_threshold
+            ),
+            "validation_best_f1": classification_metrics(
+                labels[validation], validation_scores, f1_threshold
             ),
             "validation_at_0_5": classification_metrics(
                 labels[validation], validation_scores, 0.5
@@ -489,19 +591,35 @@ def fit_and_select(
     evaluation = {
         "protocol": (
             "Deterministic script-level split; train-only vocabulary; invalid, "
-            "zero-coverage, conflicting-label, and duplicate feature bags excluded; "
-            "validation and test contain only feature bags unseen by earlier splits."
+            "zero-coverage and conflicting-label feature bags excluded; training "
+            f"duplicates capped at {max_train_duplicates} rows per feature bag; "
+            "validation and test are unique and unseen by earlier splits; "
+            f"deployment threshold targets {target_recall:.1%} validation recall."
         ),
+        "feature_contract": FEATURE_CONTRACT,
         "conflicting_feature_hashes": len(conflicting),
         "split_rows": {
-            "train_unique": int(train.size),
+            "train_capped": int(train.size),
             "validation_unseen_unique": int(validation.size),
             "test_unseen_unique": int(test.size),
         },
+        "training_duplicate_cap": max_train_duplicates,
         "candidates": candidate_results,
         "selected": best_result,
         "test": classification_metrics(labels[test], test_scores, threshold),
         "test_at_0_5": classification_metrics(labels[test], test_scores, 0.5),
+        "test_hybrid": hybrid_classification_metrics(
+            labels[test],
+            test_scores,
+            threshold,
+            arrays["security_signals"][test],
+        ),
+        "test_hybrid_at_0_5": hybrid_classification_metrics(
+            labels[test],
+            test_scores,
+            0.5,
+            arrays["security_signals"][test],
+        ),
     }
 
     final_parameters = {
@@ -523,11 +641,24 @@ def fit_and_select(
         labels[train_validation],
         sample_weight=arrays["weights"][train_validation],
     )
+    deployment_test_scores = deployment_model.predict_proba(matrix[test])[:, 1]
+    evaluation["deployment_test_at_0_5"] = classification_metrics(
+        labels[test],
+        deployment_test_scores,
+        0.5,
+    )
+    evaluation["deployment_test_hybrid_at_0_5"] = hybrid_classification_metrics(
+        labels[test],
+        deployment_test_scores,
+        0.5,
+        arrays["security_signals"][test],
+    )
     training = {
         "parameters": final_parameters,
         "validation_selected_threshold": threshold,
-        "deployment_training_rows_unique": int(train_validation.size),
+        "deployment_training_rows_capped": int(train_validation.size),
         "deployment_training_positive_rows": int(labels[train_validation].sum()),
+        "maximum_rows_per_training_feature_bag": max_train_duplicates,
     }
     return deployment_model, evaluation, training
 
@@ -547,11 +678,11 @@ def write_artifacts(
     for directory in (model_dir, preprocessing_dir, results_dir):
         directory.mkdir(parents=True, exist_ok=True)
 
-    pickle_path = model_dir / "lightgbm_grouped_model_final.pkl"
-    native_path = model_dir / "lightgbm_grouped_model.txt"
-    vocabulary_path = preprocessing_dir / "vocab_top500_grouped.json"
-    metadata_path = model_dir / "lightgbm_grouped_metadata.json"
-    evaluation_path = results_dir / "lightgbm_grouped_evaluation.json"
+    pickle_path = model_dir / "lightgbm_security_v2.pkl"
+    native_path = model_dir / "lightgbm_security_v2.txt"
+    vocabulary_path = preprocessing_dir / "vocab_security_v2.json"
+    metadata_path = model_dir / "lightgbm_security_v2_metadata.json"
+    evaluation_path = results_dir / "lightgbm_security_v2_evaluation.json"
 
     joblib.dump(model, pickle_path)
     model.booster_.save_model(native_path)
@@ -564,11 +695,14 @@ def write_artifacts(
         encoding="utf-8",
     )
     metadata = {
-        "artifact_version": 2,
+        "artifact_version": 3,
+        "model_name": "DOM-XSS LightGBM Security v2",
         "model_family": "LightGBM",
         "output_semantics": "risk_score_not_calibrated_probability",
+        "feature_contract": FEATURE_CONTRACT,
         "feature_representation": (
-            f"normalized AST token counts, top-{len(vocabulary)} train-only vocabulary"
+            f"normalized AST token counts plus deterministic source/sink "
+            f"co-occurrence features, top-{len(vocabulary)} train-only vocabulary"
         ),
         "split_contract": "deterministic 80/10/10 assignment by dbg script identifier",
         "dataset": {
@@ -582,6 +716,12 @@ def write_artifacts(
             "protocol": evaluation["protocol"],
             "test": evaluation["test"],
             "test_at_0_5": evaluation["test_at_0_5"],
+            "test_hybrid": evaluation["test_hybrid"],
+            "test_hybrid_at_0_5": evaluation["test_hybrid_at_0_5"],
+            "deployment_test_at_0_5": evaluation["deployment_test_at_0_5"],
+            "deployment_test_hybrid_at_0_5": evaluation[
+                "deployment_test_hybrid_at_0_5"
+            ],
         },
         "limitations": [
             (
@@ -610,13 +750,22 @@ def main() -> None:
     args = parse_args()
     if args.vocab_size <= 0 or args.min_token_count <= 0:
         raise ValueError("vocab size and minimum token count must be positive")
+    if not 0.0 < args.target_recall <= 1.0:
+        raise ValueError("target recall must be in the interval (0, 1]")
+    if args.max_train_duplicates <= 0:
+        raise ValueError("maximum training duplicates must be positive")
     matrix, arrays, vocabulary, audit = build_dataset(
         args.inputs,
         args.vocab_size,
         args.min_token_count,
         args.max_rows,
     )
-    model, evaluation, training = fit_and_select(matrix, arrays)
+    model, evaluation, training = fit_and_select(
+        matrix,
+        arrays,
+        args.target_recall,
+        args.max_train_duplicates,
+    )
     write_artifacts(
         args.output_root,
         model,

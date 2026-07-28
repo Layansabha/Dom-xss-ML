@@ -41,3 +41,42 @@ def test_unique_indexes_remove_exact_feature_duplicates() -> None:
     hashes = np.asarray(["a", "a", "b", "c"])
 
     assert MODULE.unique_indexes(indexes, hashes).tolist() == [0, 2, 3]
+
+
+def test_capped_duplicate_indexes_keep_bounded_repetition() -> None:
+    import numpy as np
+
+    indexes = np.asarray([0, 1, 2, 3, 4])
+    hashes = np.asarray(["a", "a", "a", "b", "b"])
+
+    assert MODULE.capped_duplicate_indexes(indexes, hashes, 2).tolist() == [0, 1, 3, 4]
+
+
+def test_security_interaction_features_are_added() -> None:
+    features = MODULE.normalize_feature_mapping(
+        "{'location': 1, 'hash': 1, 'innerHTML': 1}"
+    )
+
+    assert features is not None
+    assert features["sec_source_url"] == 1.0
+    assert features["sec_sink_inner_html"] == 1.0
+    assert features["sec_pair_url_inner_html"] == 1.0
+
+
+def test_source_without_sink_has_no_pair_feature() -> None:
+    features = MODULE.normalize_feature_mapping("{'location': 1, 'hash': 1}")
+
+    assert features is not None
+    assert features["sec_source_url"] == 1.0
+    assert not any(token.startswith("sec_pair_") for token in features)
+
+
+def test_target_recall_threshold_uses_highest_eligible_score() -> None:
+    import numpy as np
+
+    labels = np.asarray([1, 1, 0, 0])
+    scores = np.asarray([0.9, 0.7, 0.8, 0.1])
+
+    threshold = MODULE.target_recall_threshold(labels, scores, 1.0)
+
+    assert threshold == 0.7

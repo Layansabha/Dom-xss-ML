@@ -1,135 +1,160 @@
-# DOM XSS ML
+# DOM-XSS ML
 
-DOM XSS ML is an academic machine-learning project for ranking JavaScript
-functions that may contain **DOM-based Cross-Site Scripting (DOM XSS)**.
+Function-level machine learning for prioritizing JavaScript that may contain
+DOM-based Cross-Site Scripting (DOM XSS).
 
-The repository contains the original experiments and a reproducible,
-leakage-resistant LightGBM training path for the production DOM-XSS pipeline.
+The current release, **LightGBM Security v2**, is trained and maintained in this
+repository. It uses the public CMU DOM XSS dataset, but it does **not** copy or
+fine-tune the researchers' published model weights. The paper is used as a
+methodological reference; the feature engineering, LightGBM training,
+evaluation protocol, thresholds, and exported artifacts are this project's
+own derivative work.
 
-## Overview
+> This is a triage model, not a vulnerability proof. Its score is not a
+> calibrated probability of exploitation.
 
-DOM-Based XSS is difficult to detect because the vulnerability happens inside the browser through user-controlled changes to the Document Object Model. Traditional scanners often depend on payload injection, static signatures, or server-side behavior, which can miss vulnerabilities that appear only through client-side DOM manipulation.
+## Current model
 
-Instead of relying on payloads or brute-force testing, this project uses a machine learning approach. DOM samples are cleaned, transformed into structural features, and passed into classification models to predict whether a page is vulnerable or non-vulnerable.
+Security v2 combines a 4,096-term, training-only AST vocabulary with
+deterministic function-level source/sink co-occurrence features. Examples
+include the presence of a URL-controlled source and an HTML or script-execution
+sink in the same function. Co-occurrence is useful for prioritization, but it
+does not prove data flow.
+
+The default downstream operating point is `0.5`:
+
+| Evaluation mode | Precision | Recall | F1 | PR-AUC |
+|---|---:|---:|---:|---:|
+| LightGBM only | 0.8545 | 0.8393 | 0.8468 | 0.9161 |
+| Hybrid decision: model or source/sink signal | 0.7206 | 0.8750 | 0.7903 | n/a |
+
+These results use 3,215 unique held-out feature bags that were not present in
+training or validation. They are function-level results on a cleaned sampled
+derivative of the CMU dataset; they are not page-level public-web accuracy.
+See [MODEL_CARD.md](MODEL_CARD.md) and the
+[machine-readable evaluation](docs/results/lightgbm_security_v2_evaluation.json).
+
+## Repository layout
+
+```text
+models/            Native and Python model artifacts; older models are baselines
+preprocessing/     Feature contract, CMU sampler, and exported vocabulary
+training/          Leakage-resistant LightGBM training entry point
+evaluation/        External negative-corpus evaluation
+docs/results/      Machine-readable results and historical charts
+tests/             Split, feature, sampler, and benchmark regression tests
+```
 
 ## Dataset
 
-The original dataset used in this project is the **DOM XSS Web Vulnerability Dataset** from Carnegie Mellon University's KiltHub:
+The source is Carnegie Mellon University's
+[DOM XSS Web Vulnerability Dataset](https://kilthub.cmu.edu/articles/dataset/DOM_XSS_Web_Vulnerability_Dataset/13870256),
+published with the WWW 2021 paper
+[Towards a Lightweight, Hybrid Approach for Detecting DOM XSS Vulnerabilities with Machine Learning](https://www.contrib.andrew.cmu.edu/~liminjia/research/papers/www2021-dom-xss-dnn.pdf).
 
-[DOM XSS Web Vulnerability Dataset](https://kilthub.cmu.edu/articles/dataset/DOM_XSS_Web_Vulnerability_Dataset/13870256)
+Raw CMU JSONL/LZMA shards are preferred. The trainer also accepts the legacy
+XLSX samples for reproducibility. XLSX feature cells at Excel's 32,767-character
+limit are rejected because they are truncated, not converted to empty vectors.
 
-The preferred input is the dataset's raw JSONL/LZMA (`.xz`) files. The grouped
-trainer also accepts the earlier XLSX samples for migration, but rejects cells
-at Excel's 32,767-character limit because those feature dictionaries are
-truncated.
+The v2 run read 90,500 rows and retained 87,210 after rejecting 3,290 truncated
+XLSX rows:
 
-## Data Preparation
+- 37,258 positive rows
+- 49,952 negative rows
+- 22,886 unique script identifiers
 
-The production model is trained by
-`training/train_lightgbm_grouped.py`. It assigns complete scripts to one split,
-fits the vocabulary on training data only, rejects corrupt or zero-coverage
-rows, removes conflicting and duplicate feature bags, tunes on unseen
-validation patterns, and reports a once-only strict test.
+Dataset files are intentionally excluded from Git.
 
-See [MODEL_CARD.md](MODEL_CARD.md) for provenance, exact evaluation, intended
-use, limitations, and reproduction commands.
+## Reproduce the model
 
-### Adding raw CMU shards safely
-
-Do not concatenate multi-gigabyte CMU shards into the sampled XLSX file. The
-streaming sampler retains every positive feature bag, takes a deterministic
-reservoir of negatives from each input, and excludes scripts and exact feature
-bags already present in the baseline:
+Python 3.12 is recommended:
 
 ```bash
-python -m preprocessing.sample_cmu_shards \
+python -m venv .venv
+.venv/bin/pip install -r requirements-training.txt
+.venv/bin/python -m pytest -q
+```
+
+Train from the two audited XLSX samples:
+
+```bash
+.venv/bin/python training/train_lightgbm_grouped.py \
+  data/raw/positive_rows.xlsx \
+  data/raw/negative_rows.xlsx \
+  --output-root runs/security-v2 \
+  --vocab-size 4096 \
+  --min-token-count 5 \
+  --target-recall 0.95 \
+  --max-train-duplicates 20
+```
+
+The same command accepts raw `.jsonl`, `.jsonl.gz`, or `.data.xz` inputs.
+Artifacts are written as:
+
+```text
+runs/security-v2/models/lightgbm_security_v2.txt
+runs/security-v2/models/lightgbm_security_v2.pkl
+runs/security-v2/models/lightgbm_security_v2_metadata.json
+runs/security-v2/preprocessing/vocab_security_v2.json
+runs/security-v2/docs/results/lightgbm_security_v2_evaluation.json
+```
+
+## Evaluation protocol
+
+The trainer:
+
+1. assigns complete scripts to deterministic 80/10/10 splits;
+2. builds the vocabulary from training scripts only;
+3. rejects invalid, truncated, and zero-coverage rows;
+4. removes feature bags with conflicting labels;
+5. retains at most 20 identical training bags so common patterns remain
+   learnable without dominating training;
+6. excludes validation and test bags seen in any earlier split;
+7. selects hyperparameters by validation PR-AUC;
+8. derives the recall-oriented threshold from validation only; and
+9. reports the test split once, with model-only and hybrid metrics separated.
+
+The report retains the train-only selection model's test metrics and separately
+reports the exported deployment artifact after it is refit on train and
+validation. The table above describes the artifact that is actually served.
+
+Older Decision Tree, AdaBoost, Random Forest, XGBoost, and LightGBM artifacts
+remain in `models/` for historical comparison. Their original random row split
+allows script and exact-pattern leakage, so they must not be selected from
+their old headline accuracy alone.
+
+## Adding CMU shards
+
+Use the streaming sampler rather than concatenating multi-gigabyte shards into
+Excel:
+
+```bash
+.venv/bin/python -m preprocessing.sample_cmu_shards \
   data/raw/cmu/vulnerability-data/confirmed/*.data.xz \
   --exclude data/raw/full_dataset.xlsx \
   --negative-rows-per-input 50000 \
   --output data/processed/cmu-confirmed-additions.jsonl.gz
 ```
 
-The sampler writes a JSON audit beside its output. The resulting JSONL can be
-passed to `training/train_lightgbm_grouped.py` together with the baseline XLSX.
-Raw data and local `runs/` outputs are ignored by Git.
-
-When the sampler finds no new positive scripts, do not add a negative-only
-sample to training automatically. Use it as an external negative benchmark:
+If a shard adds no independent positive scripts, use it as a negative benchmark
+instead of silently changing the training balance:
 
 ```bash
-python -m evaluation.evaluate_negative_benchmark \
+.venv/bin/python -m evaluation.evaluate_negative_benchmark \
   data/processed/cmu-confirmed-additions.jsonl.gz \
-  --model runs/baseline/models/lightgbm_grouped_model_final.pkl \
-  --vocabulary runs/baseline/preprocessing/vocab_top500_grouped.json \
-  --metadata runs/baseline/models/lightgbm_grouped_metadata.json \
-  --output runs/baseline/docs/results/external_negative_benchmark.json
+  --model models/lightgbm_security_v2.pkl \
+  --vocabulary preprocessing/vocab_security_v2.json \
+  --metadata models/lightgbm_security_v2_metadata.json \
+  --output runs/security-v2/docs/results/external_negative_benchmark.json
 ```
-
-This reports the false-positive rate and specificity at both the
-validation-selected operating threshold and `0.5`. The command fails if the
-benchmark unexpectedly contains a positive row.
-
-## Detection Workflow
-
-The project is designed as a full detection workflow, not only a trained model:
-
-1. DOM samples are prepared from the dataset.
-2. DOM content is cleaned and normalized.
-3. Structural DOM features are extracted and vectorized.
-4. The processed features are passed into trained machine learning models.
-5. The model produces a risk-ranking score for each function.
-6. Model results are compared to evaluate detection performance.
-
-## Models
-
-The project trains and compares multiple supervised machine learning models:
-
-- LightGBM
-- XGBoost
-- AdaBoost
-- Decision Tree
-- Random Forest
-- MLP
-
-The older model files are preserved for comparison. The production artifacts
-are `models/lightgbm_grouped_model.txt` and
-`preprocessing/vocab_top500_grouped.json`.
-
-## Results
-
-### Model Comparison
-
-![Model Comparison](docs/results/model-comparison.svg)
-
-### Shared Features Between Random Forest and MLP
-
-![RF and MLP Shared Features](docs/results/rf-mlp-intersection-features.svg)
-
-## Scope
-
-This repository focuses on DOM-Based XSS classification using structural DOM features and machine learning. It does not cover SQL Injection, CSRF, reflected XSS, stored XSS, network security, or mobile security.
-
-## Strict grouped LightGBM result
-
-On the strict held-out set of unique, previously unseen feature bags:
-
-| Threshold | Precision | Recall | F1 | PR-AUC |
-|---|---:|---:|---:|---:|
-| Validation-selected | 0.9545 | 0.7636 | 0.8485 | 0.9066 |
-| 0.50 pre-filter | 0.8431 | 0.7818 | 0.8113 | 0.9066 |
-
-These are function-level measurements on the cleaned sampled derivative
-dataset, not a claim of page-level production accuracy.
 
 ## Limitations
 
-- Model quality depends on the size and quality of the labeled dataset.
-- Runtime-only DOM XSS cases may require additional browser execution or user interaction to detect.
-- The score is a ranking signal, not a calibrated probability or proof of
-  exploitability.
-- The Tree-sitter production extractor is not identical to the modified
-  Chromium/V8 instrumentation used to produce the research data.
+- The training features came from modified Chromium/V8 instrumentation, while
+  the serving pipeline reconstructs a compatible subset with Tree-sitter.
+- Source/sink co-occurrence is not taint tracking.
+- The strict test has only 56 independent positive bags.
+- The source crawl is from 2019 and does not fully represent modern frameworks.
+- Authenticated, interaction-dependent, or unexecuted paths can be missed.
 
-## Ethical Use
-
-This project is intended for academic research, cybersecurity learning, and authorized testing only.
+Use the model only on systems you own or are explicitly authorized to test.
