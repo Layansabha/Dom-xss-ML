@@ -18,6 +18,7 @@ from lightgbm import LGBMClassifier, early_stopping, log_evaluation
 from openpyxl import load_workbook
 from scipy import sparse
 from sklearn.metrics import (
+    accuracy_score,
     average_precision_score,
     confusion_matrix,
     f1_score,
@@ -309,6 +310,7 @@ def classification_metrics(
         "rows": int(labels.size),
         "positive_rows": int(labels.sum()),
         "threshold": float(threshold),
+        "accuracy": float(accuracy_score(labels, predicted)),
         "precision": float(precision_score(labels, predicted, zero_division=0)),
         "recall": float(recall_score(labels, predicted, zero_division=0)),
         "f1": float(f1_score(labels, predicted, zero_division=0)),
@@ -335,6 +337,7 @@ def hybrid_classification_metrics(
         "rows": int(labels.size),
         "positive_rows": int(labels.sum()),
         "threshold": float(threshold),
+        "accuracy": float(accuracy_score(labels, combined_positive)),
         "precision": float(
             precision_score(labels, combined_positive, zero_division=0)
         ),

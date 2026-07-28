@@ -88,20 +88,20 @@ without allowing them into held-out evaluation.
 
 ### LightGBM only
 
-| Operating point | Precision | Recall | F1 | PR-AUC | ROC-AUC |
-|---|---:|---:|---:|---:|---:|
-| Exported artifact at `0.5` | 0.8545 | 0.8393 | 0.8468 | 0.9161 | 0.9967 |
-| Validation 95%-recall target (`0.02206`) | 0.6000 | 0.9107 | 0.7234 | 0.9130 | 0.9961 |
+| Operating point | Accuracy | Precision | Recall | F1 | PR-AUC | ROC-AUC |
+|---|---:|---:|---:|---:|---:|---:|
+| Exported artifact at `0.5` | 0.9947 | 0.8545 | 0.8393 | 0.8468 | 0.9161 | 0.9967 |
+| Validation 95%-recall target (`0.02206`) | 0.9879 | 0.6000 | 0.9107 | 0.7234 | 0.9130 | 0.9961 |
 
 ### Hybrid downstream decision
 
 The consuming pipeline can raise priority when either the model crosses its
 threshold or a source/sink co-occurrence signal is present.
 
-| Operating point | Precision | Recall | F1 |
-|---|---:|---:|---:|
-| Exported artifact at `0.5` | 0.7206 | 0.8750 | 0.7903 |
-| Validation 95%-recall target (`0.02206`) | 0.5604 | 0.9107 | 0.6939 |
+| Operating point | Accuracy | Precision | Recall | F1 |
+|---|---:|---:|---:|---:|
+| Exported artifact at `0.5` | 0.9919 | 0.7206 | 0.8750 | 0.7903 |
+| Validation 95%-recall target (`0.02206`) | 0.9860 | 0.5604 | 0.9107 | 0.6939 |
 
 Hybrid metrics are reported separately because the rule contribution is not an
 ML prediction.
@@ -109,6 +109,11 @@ ML prediction.
 The recall-target rows describe the train-only selection model. The default
 rows describe the exported artifact after refitting on train and validation;
 these are the numbers relevant to the production bundle.
+
+Accuracy is included for completeness, not as the primary quality claim. The
+strict test contains 56 positive bags among 3,215 rows, so a negative-heavy
+classifier can obtain high accuracy while still missing security-relevant
+positives. Precision, recall, F1, and PR-AUC are therefore emphasized.
 
 The exact report is
 [`docs/results/lightgbm_security_v2_evaluation.json`](docs/results/lightgbm_security_v2_evaluation.json).

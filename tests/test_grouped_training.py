@@ -80,3 +80,16 @@ def test_target_recall_threshold_uses_highest_eligible_score() -> None:
     threshold = MODULE.target_recall_threshold(labels, scores, 1.0)
 
     assert threshold == 0.7
+
+
+def test_classification_metrics_report_accuracy_from_confusion_counts() -> None:
+    import numpy as np
+
+    metrics = MODULE.classification_metrics(
+        np.asarray([1, 1, 0, 0]),
+        np.asarray([0.9, 0.4, 0.8, 0.1]),
+        0.5,
+    )
+
+    assert metrics["accuracy"] == 0.5
+    assert metrics["confusion"] == {"tn": 1, "fp": 1, "fn": 1, "tp": 1}

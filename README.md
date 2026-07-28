@@ -23,14 +23,17 @@ does not prove data flow.
 
 The default downstream operating point is `0.5`:
 
-| Evaluation mode | Precision | Recall | F1 | PR-AUC |
-|---|---:|---:|---:|---:|
-| LightGBM only | 0.8545 | 0.8393 | 0.8468 | 0.9161 |
-| Hybrid decision: model or source/sink signal | 0.7206 | 0.8750 | 0.7903 | n/a |
+| Evaluation mode | Accuracy | Precision | Recall | F1 | PR-AUC |
+|---|---:|---:|---:|---:|---:|
+| LightGBM only | 0.9947 | 0.8545 | 0.8393 | 0.8468 | 0.9161 |
+| Hybrid decision: model or source/sink signal | 0.9919 | 0.7206 | 0.8750 | 0.7903 | n/a |
 
 These results use 3,215 unique held-out feature bags that were not present in
 training or validation. They are function-level results on a cleaned sampled
 derivative of the CMU dataset; they are not page-level public-web accuracy.
+Accuracy is shown for completeness but is not the headline metric because only
+56 of the 3,215 strict test bags are positive; precision, recall, F1, and PR-AUC
+better describe performance on that imbalance.
 See [MODEL_CARD.md](MODEL_CARD.md) and the
 [machine-readable evaluation](docs/results/lightgbm_security_v2_evaluation.json).
 
