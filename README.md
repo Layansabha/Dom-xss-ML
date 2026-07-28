@@ -53,6 +53,22 @@ The sampler writes a JSON audit beside its output. The resulting JSONL can be
 passed to `training/train_lightgbm_grouped.py` together with the baseline XLSX.
 Raw data and local `runs/` outputs are ignored by Git.
 
+When the sampler finds no new positive scripts, do not add a negative-only
+sample to training automatically. Use it as an external negative benchmark:
+
+```bash
+python -m evaluation.evaluate_negative_benchmark \
+  data/processed/cmu-confirmed-additions.jsonl.gz \
+  --model runs/baseline/models/lightgbm_grouped_model_final.pkl \
+  --vocabulary runs/baseline/preprocessing/vocab_top500_grouped.json \
+  --metadata runs/baseline/models/lightgbm_grouped_metadata.json \
+  --output runs/baseline/docs/results/external_negative_benchmark.json
+```
+
+This reports the false-positive rate and specificity at both the
+validation-selected operating threshold and `0.5`. The command fails if the
+benchmark unexpectedly contains a positive row.
+
 ## Detection Workflow
 
 The project is designed as a full detection workflow, not only a trained model:
