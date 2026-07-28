@@ -1,0 +1,45 @@
+{
+  "benchmark_type": "external_unique_negative_corpus",
+  "dataset": {
+    "excluded_baseline": "data/raw/full_dataset.xlsx",
+    "input_shards": [
+      "shuf.comp.wb.training.101.data.xz",
+      "shuf.comp.wb.training.150.data.xz",
+      "shuf.comp.wb.training.200.data.xz",
+      "shuf.comp.wb.training.250.data.xz"
+    ],
+    "raw_negative_rows": 22374909,
+    "raw_positive_rows": 874,
+    "unique_positive_rows_after_baseline_exclusion": 0
+  },
+  "rejected_rows": {},
+  "rows": 146772,
+  "score_summary": {
+    "mean": 0.012357238268646398,
+    "percentiles": {
+      "0": 1.8848835602292287e-06,
+      "50": 7.95461171453159e-05,
+      "90": 0.0005931960802818299,
+      "95": 0.004224283903868185,
+      "99": 0.48827295393414555,
+      "99.9": 0.9950774716962764,
+      "100": 0.9999853382254161
+    }
+  },
+  "selected_threshold": {
+    "false_positive_rate": 0.0033589512986128144,
+    "false_positives": 493,
+    "specificity": 0.9966410487013871,
+    "threshold": 0.9608517491924881,
+    "true_negatives": 146279
+  },
+  "threshold_0_5": {
+    "false_positive_rate": 0.009817948927588369,
+    "false_positives": 1441,
+    "specificity": 0.9901820510724116,
+    "threshold": 0.5,
+    "true_negatives": 145331
+  },
+  "vocabulary_coverage_rate": 0.9565726098220369,
+  "zero_vocabulary_coverage_rows": 6374
+}

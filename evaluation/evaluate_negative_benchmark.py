@@ -109,7 +109,12 @@ def evaluate_negative_benchmark(
         if not batch:
             return
         matrix, zero_rows = vectorize_records(batch, vocabulary)
-        scores = np.asarray(model.predict_proba(matrix)[:, 1], dtype=np.float64)
+        booster = getattr(model, "booster_", None)
+        if booster is not None:
+            raw_scores = booster.predict(matrix)
+        else:
+            raw_scores = model.predict_proba(matrix)[:, 1]
+        scores = np.asarray(raw_scores, dtype=np.float64)
         score_batches.append(scores)
         zero_coverage_rows += zero_rows
         batch.clear()

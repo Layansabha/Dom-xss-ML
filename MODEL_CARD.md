@@ -62,11 +62,36 @@ dataset. They do not estimate page-level accuracy or production precision at
 the much lower prevalence found on the public web. The exact machine-readable
 report is in `docs/results/lightgbm_grouped_evaluation.json`.
 
+### External negative benchmark
+
+The frozen model was additionally evaluated on 146,772 unique negative feature
+bags sampled from four separate CMU confirmed-data shards (`101`, `150`, `200`,
+and `250`). Scripts and exact feature bags already present in the baseline were
+excluded before evaluation. All 874 positive rows encountered in those shards
+belonged to baseline scripts, so they were not new independent positives and
+were not included in this negative-only benchmark.
+
+| Threshold | False positives | False-positive rate | Specificity |
+|---|---:|---:|---:|
+| Validation-selected `0.96085` | 493 | 0.3359% | 99.6641% |
+| `0.50` | 1,441 | 0.9818% | 99.0182% |
+
+Vocabulary coverage was 95.6573%; 6,374 rows had no vocabulary coverage. This
+benchmark measures specificity on additional in-distribution CMU negatives. It
+does not measure recall, modern-web generalization, or page-level performance.
+The machine-readable report is in
+`docs/results/external_negative_benchmark.json`.
+
 ## Score semantics
 
 LightGBM output is exposed as an **ML risk score**, not as a calibrated
-probability of exploitability. The `0.50` threshold is retained in the
-production pipeline as a recall-oriented pre-filter before OWASP ZAP.
+probability of exploitability. The validation-selected `0.96085` threshold is
+the function-level operating point for this model evaluation. The downstream
+browser pipeline deliberately retains `0.50` as a recall-oriented triage
+threshold before optional dynamic verification: on its small page-level
+regression corpus, raising the threshold to `0.96085` removed the only true
+positive. Threshold choice therefore belongs to the consuming feature
+contract and must not be transferred from this CMU evaluation blindly.
 
 ## Known limitations
 
